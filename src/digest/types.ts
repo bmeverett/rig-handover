@@ -130,3 +130,29 @@ export function readNight(runsDir: string, night: string): NightDigest {
 
   return { rows, badLines };
 }
+
+export type StatusCounts = { ok: number; retry: number; fail: number };
+
+/** Count parsed log lines by status. A missing file throws. Bad lines are skipped. */
+export function countByStatus(runsDir: string, night: string): StatusCounts {
+  const text = readFileSync(join(runsDir, `${night}.jsonl`), 'utf8');
+  const counts: StatusCounts = { ok: 0, retry: 0, fail: 0 };
+
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+
+    let value: unknown;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (!isRecord(value)) continue;
+    const row = rowFromLine(value);
+    if (!row) continue;
+    counts[row.lastStatus] += 1;
+  }
+
+  return counts;
+}
